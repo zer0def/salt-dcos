@@ -29,7 +29,7 @@ update_mine:
 
 # requires docker-py / python-docker to be installed
 create_bootstrap:
-{% if salt['pillar.get']('dcos:minion_bootstrap', True) %}
+{% if dcos.bootstrap_hosts %}
   salt.state:
     - tgt: 'I@dcos:cluster_name:{{ dcos.cluster_name }} and I@dcos:bootstrap:true'
     - tgt_type: compound
@@ -142,7 +142,7 @@ install_dcos:
       - salt: stop_bootstrap
 
 stop_bootstrap:
-{% if salt['pillar.get']('dcos:minion_bootstrap', True) %}
+{% if dcos.bootstrap_hosts %}
   salt.state:
     - tgt: 'I@dcos:cluster_name:{{ dcos.cluster_name }} and I@dcos:bootstrap:true'
     - tgt_type: compound
@@ -158,7 +158,7 @@ stop_bootstrap:
         force: true
         volumes: true
 
-  {% for path in cleanup_paths %}
+  {% for path in dcos.cleanup_paths %}
 cleanup_bootstrap_{{ loop.index0 }}:
   salt.runner:
     - name: salt.cmd

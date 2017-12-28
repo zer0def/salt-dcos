@@ -45,7 +45,8 @@
   'public_agent_list': salt['saltutil.runner']('mine.get', tgt='I@dcos:cluster_name:{} and I@dcos:role:slave_public'.format(cluster_name), fun='network.ip_addrs', tgt_type='compound').values()|sum(start=[])
 } %}
 
-{% if salt['pillar.get']('dcos:minion_bootstrap', True) %}
+{% set bootstrap_hosts = salt['mine.get']('I@dcos:cluster_name:{} and I@dcos:bootstrap:true'.format(cluster_name), 'network.ip_addrs', tgt_type='compound').values()|sum(start=[]) %}
+{% if grains.get('master', '') %}
   {% set file_root = '/var/tmp' %}
 {% else %}
   {% set file_root = '{}/{}'.format(salt['config.get']('file_roots:base')|first, 'dcos') %}
@@ -58,4 +59,4 @@
 {% for relpath in data[version]['cleanup_paths'] %}
   {% do cleanup_paths.append('{}/{}'.format(file_root, relpath)) %}
 {% endfor %}
-{% set cleanup_genconf = salt['pillar.get']('dcos:cleanup_genconf', False) %}
+{% set cleanup_genconf = salt['pillar.get']('dcos:cleanup_genconf', True) %}
