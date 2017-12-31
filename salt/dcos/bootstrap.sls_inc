@@ -1,0 +1,47 @@
+{% if grains['os_family'] == 'RedHat' %}
+  pkgrepo.managed:
+    - name: docker
+    - baseurl: https://packages.docker.com/1.13/yum/repo/main/centos/7
+    - enabled: 1
+    - gpgcheck: 1
+    - gpgkey: https://sks-keyservers.net/pks/lookup?op=get&search=0xee6d536cf7dc86e2d7d56f59a178ac6c6238f52e
+  pkg.installed:
+    - refresh: true
+    - reload_modules: true
+    - pkgs:
+      - docker-engine
+      - python-docker-py
+    - require_in:
+      - service: bootstrap
+{% endif %}
+  service.running:
+    - name: docker
+    - enable: true
+  file.managed:
+    - names:
+      - {{ dcos.file_root }}/genconf/config.yaml:
+        - contents: {{ (dcos.genconf|yaml(False)).split('\n')|json }}
+      - {{ dcos.file_root }}/genconf/ip-detect:
+        - source: salt://dcos/ip-detect
+      - {{ dcos.file_root }}/dcos_generate_config.sh:
+        - source: {{ dcos.data[dcos.version]['source'] }}
+        - source_hash: {{ dcos.data[dcos.version]['source_hash'] }}
+    - mode: 0755
+    - dir_mode: 0755
+    - makedirs: true
+  cmd.run:
+    - name: /bin/bash dcos_generate_config.sh
+    - cwd: {{ dcos.file_root }}
+    - require:
+      - file: bootstrap
+# requires docker-py / python-docker to be installed
+  docker_container.running:
+    - name: {{ dcos.bootstrap_container_name }}
+    - image: 'nginx:alpine'
+    - port_bindings:
+      - "{{ dcos.bootstrap_port }}:80"
+    - binds:
+      - "{{ dcos.file_root }}/genconf/serve:/usr/share/nginx/html:ro"
+    - require:
+      - service: bootstrap
+      - cmd: bootstrap

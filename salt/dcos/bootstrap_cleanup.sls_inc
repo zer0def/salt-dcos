@@ -1,0 +1,8 @@
+  docker_container.absent:
+    - name: {{ dcos.bootstrap_container_name }}
+    - force: true
+    - volumes: true
+  file.absent:
+    - names: {{ dcos.cleanup_paths }}
+    - require:
+      - docker_container: bootstrap_cleanup

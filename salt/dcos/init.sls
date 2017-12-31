@@ -12,19 +12,29 @@
   'base_url': 'http://{}:8080'.format(salt['mine.get']('I@dcos:cluster_name:{} and I@dcos:role:master'.format(salt['pillar.get']('dcos:cluster_name', 'asdf')), 'network.ip_addrs', tgt_type='compound').values()|sum(start=[])|first)
 }) %}
 
-include:
-  - .common
-
-dcos_install:
+install:
+  pkgrepo.managed:
+    - name: docker
+    - baseurl: https://packages.docker.com/1.13/yum/repo/main/centos/7
+    - enabled: 1
+    - gpgcheck: 1
+    - gpgkey: https://sks-keyservers.net/pks/lookup?op=get&search=0xee6d536cf7dc86e2d7d56f59a178ac6c6238f52e
   pkg.installed:
     - refresh: true
     - pkgs:
       - curl
+      - docker-engine
       - git
       - ipset
       - wget
       - unzip
       - xz
+    - require:
+      - pkgrepo: install
+  service.running:
+    - name: docker
+    - require:
+      - pkg: install
   group.present:
     - name: nogroup
     - system: true
@@ -34,9 +44,8 @@ dcos_install:
 #      - '/bin/bash <(curl -s http://{{ bootstrap_host }}:{{ dcos.bootstrap_port }}/dcos_install.sh) {{ salt['pillar.get']('dcos:role', 'slave') }}'
       - 'curl -s http://{{ bootstrap_host }}:{{ dcos.bootstrap_port }}/dcos_install.sh | /bin/bash -s {{ salt['pillar.get']('dcos:role', 'slave') }}'
     - require:
-      - group: dcos_install
-      - pkg: dcos_common
-      - pkg: dcos_install
+      - group: install
+      - service: install
 {#
   module.run:
     - name: state.apply
@@ -44,11 +53,11 @@ dcos_install:
         pillar:
           proxy: {{ proxyminion_pillar|json }}
     - require:
-      - cmd: dcos_install
+      - cmd: install
 
 dcos_refresh_pillar:
   module.run:
     - name: saltutil.refresh_pillar
     - require:
-      - module: dcos_install
+      - module: install
 #}
